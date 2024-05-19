@@ -1,0 +1,18 @@
+{
+  "name": "travelcompanion",
+  "version": "1.0.0",
+  "description": "Intelligent travel planning chatbot.",
+  "scripts": {
+    "start": "node app.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^4.0.0",
+    "body-parser": "^1.19.0"
+  },
+  "devDependencies": {
+    "jest": "^26.6.3",
+    "nodemon": "^2.0.7"
+  }
+}

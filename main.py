@@ -1,22 +1,36 @@
 from flask import Flask, request, jsonify
+from flask_caching import Cache
 import os
 import requests
 
 app = Flask(__name__)
+cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache'})
+app.config['CACHE_TYPE'] = 'SimpleCache'
+cache.init_app(app)
 
 API_KEY = os.getenv('API_KEY')
 
 users_bookings = {}
 
 @app.route('/query', methods=['POST'])
+@cache.cached(timeout=50, query_string=True)  # Caches for 50 seconds, could adjust depending on freshness needs
 def query_destination():
     data = request.json
     destination = data.get('destination')
     if not destination:
         return jsonify({"error": "Destination not provided"}), 400
+    
+    # Check cache first
+    cache_key = f"dest_{destination}"
+    cached_dest_info = cache.get(cache_key)
+    if cached_dest_info:
+        return jsonify(cached_dest_info), 200
 
     response = requests.get(f"https://api.example.com/destinations?query={destination}&api_key={API_KEY}")
     destination_info = response.json()
+    
+    # Store in cache before returning
+    cache.set(cache_key, destination_info, timeout=50)  # Cache this specific destination query
     
     return jsonify(destination_info), 200
 
@@ -52,7 +66,7 @@ def cancel_booking():
     response = requests.delete(f"https://api.example.com/bookings/{booking_id}",
                                headers={"Authorization": f"Bearer {API_KEY}"})
     if response.status_code == 200:
-        del users_bookings[user_id]
+        del users_bookings[user_id]  # Consider checking if user_id exists before deleting
         return jsonify({"message": "Booking cancelled successfully"}), 200
     else:
         return jsonify({"error": "Failed to cancel booking"}), response.status_code

@@ -13,7 +13,7 @@ API_KEY = os.getenv('API_KEY')
 users_bookings = {}
 
 @app.route('/query', methods=['POST'])
-@cache.cached(timeout=50, query_string=True)  # Caches for 50 seconds, could adjust depending on freshness needs
+@cache.cached(timeout=50, query_string=True)
 def query_destination():
     data = request.json
     destination = data.get('destination')
@@ -30,7 +30,7 @@ def query_destination():
     destination_info = response.json()
     
     # Store in cache before returning
-    cache.set(cache_key, destination_info, timeout=50)  # Cache this specific destination query
+    cache.set(cache_key, destination_info, timeout=50)
     
     return jsonify(destination_info), 200
 

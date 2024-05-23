@@ -10,66 +10,65 @@ cache.init_app(app)
 
 API_KEY = os.getenv('API_KEY')
 
-users_bookings = {}
+user_bookings_dict = {}
 
-@app.route('/query', methods=['POST'])
+@app.route('/destination-query', methods=['POST'])
 @cache.cached(timeout=50, query_string=True)
-def query_destination():
-    data = request.json
-    destination = data.get('destination')
-    if not destination:
+def destination_query():
+    request_data = request.json
+    target_destination = request_data.get('destination')
+    if not target_destination:
         return jsonify({"error": "Destination not provided"}), 400
     
-    # Check cache first
-    cache_key = f"dest_{destination}"
-    cached_dest_info = cache.get(cache_key)
-    if cached_dest_info:
-        return jsonify(cached_dest_info), 200
+    cache_key = f"destination_{target_destination}"
+    cached_destination_data = cache.get(cache_key)
+    if cached_destination_data:
+        return jsonify(cached_destination_data), 200
 
-    response = requests.get(f"https://api.example.com/destinations?query={destination}&api_key={API_KEY}")
-    destination_info = response.json()
+    destination_response = requests.get(f"https://api.example.com/destinations?query={target_destination}&api_key={API_KEY}")
+    destination_data = destination_response.json()
     
-    # Store in cache before returning
-    cache.set(cache_key, destination_info, timeout=50)
+    cache.set(cache_key, destination_data, timeout=50)
     
-    return jsonify(destination_info), 200
+    return jsonify(destination_data), 200
 
-@app.route('/booking', methods=['POST'])
-def book_trip():
-    data = request.json
-    user_id = data.get('user_id')
-    booking_details = data.get('booking_details')
+@app.route('/create-booking', methods=['POST'])
+def create_booking():
+    request_data = request.json
+    user_id = request_data.get('user_id')
+    booking_info = request_data.get('booking_details')
     
-    if not user_id or not booking_details:
+    if not user_id or booking_info is None:
         return jsonify({"error": "Missing booking details"}), 400
     
-    response = requests.post("https://api.example.com/bookings",
-                             json=booking_details,
+    booking_api_response = requests.post("https://api.example.com/bookings",
+                             json=booking_info,
                              headers={"Authorization": f"Bearer {API_KEY}"})
-    booking_response = response.json()
+    booking_result = booking_api_response.json()
     
-    if response.status_code == 200:
-        users_bookings[user_id] = booking_details
-        return jsonify(booking_response), 200
+    if booking_api_response.status_code == 200:
+        user_bookings_dict[user_id] = booking_info
+        return jsonify(booking_result), 200
     else:
-        return jsonify(booking_response), response.status_code
+        return jsonify(booking_result), booking_api_response.status_code
 
-@app.route('/cancel_booking', methods=['POST'])
+@app.route('/cancel-booking', methods=['POST'])
 def cancel_booking():
-    data = request.json
-    user_id = data.get('user_id')
-    booking_id = data.get('booking_id')
+    request_data = request.json
+    user_id = request_data.get('user_id')
+    booking_identifier = request_data.get('booking_id')
     
-    if not user_id or not booking_id:
+    if not user_id or not booking_identifier:
         return jsonify({"error": "Missing user or booking ID"}), 400
     
-    response = requests.delete(f"https://api.example.com/bookings/{booking_id}",
+    cancellation_response = requests.delete(f"https://api.example.com/bookings/{booking_identifier}",
                                headers={"Authorization": f"Bearer {API_KEY}"})
-    if response.status_code == 200:
-        del users_bookings[user_id]  # Consider checking if user_id exists before deleting
+    if cancellation_response.status_code == 200:
+        if user_id in user_bookings_dict:
+            del user_bookings_dict[user_id]
         return jsonify({"message": "Booking cancelled successfully"}), 200
     else:
-        return jsonify({"error": "Failed to cancel booking"}), response.status_code
+        return jsonify({"error": "Failed to cancel booking"}), cancellation_response.status_code
 
 if __name__ == '__main__':
     app.run(debug=True)

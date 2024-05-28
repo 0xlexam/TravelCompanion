@@ -17,11 +17,15 @@
         <div class="query-buttons">
             <button onclick="quickQuery('flights')">Check Flights</button>
             <button onclick="quickQuery('hotels')">Find Hotels</button>
-            <button onclick="quick,Query('attractions')">Discover Attractions</button>
+            <button onclick="quickQuery('attractions')">Discover Attractions</button>
         </div>
         <div class="display-area" id="display-area">
         </div>
     </div>
+    <!-- Link to the author page -->
+    <footer>
+        <a href="author.html">About the Author</a>
+    </footer>
     <script>
         function sendMessage() {
             const userInput = document.getElementById('user-input').value;
@@ -39,5 +43,24 @@
             displayMessage(`Searching for ${queryType}...`, 'bot');
         }
     </script>
+</body>
+</html>
+```
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About the Author</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="author-container">
+        <h1>About the Author</h1>
+        <p>Hello, I'm [Your Name], the creator of the TravelCompanion Chatbot. Passionate about technology and travel, I decided to combine these interests to create a chatbot that helps people explore the world comfortably. Feel free to reach out with any suggestions or questions!</p>
+        <!-- A back button to navigate to the main chatbot page -->
+        <p><a href="index.html">Back to Chatbot</a></p>
+    </div>
 </body>
 </html>

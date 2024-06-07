@@ -6,26 +6,34 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
-
 app.use(express.static('public'));
 
 const server = http.createServer(app);
-
 const wss = new WebSocket.Server({ server });
 
+const rateLimitCache = new Map();
+
 const rateLimit = (ws, limit, period) => {
-  let messageCount = 0;
-  const resetInterval = setInterval(() => {
-    messageCount = 0;
-  }, period);
+  if (!rateLimitCache.has(ws)) {
+    rateLimitCache.set(ws, { messageCount: 0, resetInterval: null });
+  }
+
+  const cache = rateLimitCache.get(ws);
+
+  if (!cache.resetInterval) {
+    cache.resetInterval = setInterval(() => {
+      cache.messageCount = 0;
+    }, period);
+  }
 
   ws.on('close', () => {
-    clearInterval(resetInterval);
+    clearInterval(cache.resetInterval);
+    rateLimitCache.delete(ws);
   });
 
   return (callback) => {
-    if (messageCount < limit) {
-      messageCount++;
+    if (cache.messageCount < limit) {
+      cache.messageCount++;
       callback();
     } else {
       console.log('Rate limit exceeded. Message skipped.');
@@ -42,7 +50,6 @@ wss.on('connection', (ws) => {
   ws.on('message', function incoming(data) {
     checkRateLimit(() => {
       console.log('Message from client:', data);
-
       ws.send(`Echo from server: ${data}`);
     });
   });

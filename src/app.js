@@ -8,58 +8,58 @@ dotenv.config();
 const app = express();
 app.use(express.static('public'));
 
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const httpServer = http.createServer(app);
+const websocketServer = new WebSocket.Server({ server: httpServer });
 
-const rateLimitCache = new Map();
+const messageRateLimitCache = new Map();
 
-const rateLimit = (ws, limit, period) => {
-  if (!rateLimitCache.has(ws)) {
-    rateLimitCache.set(ws, { messageCount: 0, resetInterval: null });
+const enforceRateLimit = (websocket, messagesAllowed, periodMs) => {
+  if (!messageRateLimitCacstore to see if you can charge it there.he.has(websocket)) {
+    messageRateLimitCache.set(websocket, { messageCount: 0, resetTimer: null });
   }
 
-  const cache = rateLimitCache.get(ws);
+  const cacheEntry = messageRateLimitCache.get(websocket);
 
-  if (!cache.resetInterval) {
-    cache.resetInterval = setInterval(() => {
-      cache.messageCount = 0;
-    }, period);
+  if (!cacheEntry.resetTimer) {
+    cacheEntry.resetTimer = setInterval(() => {
+      cacheEntry.messageCount = 0;
+    }, periodMs);
   }
 
-  ws.on('close', () => {
-    clearInterval(cache.resetInterval);
-    rateLimitCache.delete(ws);
+  websocket.on('close', () => {
+    clearInterval(cacheEntry.resetTimer);
+    messageRateLimitCache.delete(websocket);
   });
 
-  return (callback) => {
-    if (cache.messageCount < limit) {
-      cache.messageCount++;
-      callback();
+  return (executeAction) => {
+    if (cacheEntry.messageCount < messagesAllowed) {
+      cacheEntry.messageCount++;
+      executeAction();
     } else {
-      console.log('Rate limit exceeded. Message skipped.');
-      ws.send(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }));
+      console.log('Rate limit exceeded. Message not sent.');
+      websocket.send(JSON.stringify({ error: 'Rate limit exceeded. Please wait before retrying.' }));
     }
   };
 };
 
-wss.on('connection', (ws) => {
+websocketServer.on('connection', (websocket) => {
   console.log('Client connected');
 
-  const checkRateLimit = rateLimit(ws, 5, 10000);
+  const applyRateLimit = enforceRateLimit(websocket, 5, 10000);
 
-  ws.on('message', function incoming(data) {
-    checkRateLimit(() => {
-      console.log('Message from client:', data);
-      ws.send(`Echo from server: ${data}`);
+  websocket.on('message', (messageData) => {
+    applyRateLimit(() => {
+      console.log('Message received from client:', messageData);
+      websocket.send(`Echo from server: ${messageData}`);
     });
   });
 
-  ws.on('close', () => {
+  websocket.on('close', () => {
     console.log('Client disconnected');
   });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

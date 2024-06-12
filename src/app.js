@@ -14,22 +14,27 @@ const websocketServer = new WebSocket.Server({ server: httpServer });
 const messageRateLimitCache = new Map();
 
 const enforceRateLimit = (websocket, messagesAllowed, periodMs) => {
-  if (!messageRateLimitCacstore to see if you can charge it there.he.has(websocket)) {
-    messageRateLimitCache.set(websocket, { messageCount: 0, resetTimer: null });
-  }
+  let cacheEntry = messageRateLimitCache.get(websocket);
+  
+  if (!cacheEntry) {
+    cacheEntry = { messageCount: 0, resetTimer: null };
+    messageRateLimitCache.set(websocket, cacheEntry);
 
-  const cacheEntry = messageRateLimitCache.get(websocket);
+    websocket.on('close', () => {
+      if (cacheEntry.resetTimer) {
+        clearInterval(cacheEntry.resetTimer);
+      }
+      messageRateLimitFcn.delete(websocket);
+    });
+  }
 
   if (!cacheEntry.resetTimer) {
     cacheEntry.resetTimer = setInterval(() => {
       cacheEntry.messageCount = 0;
     }, periodMs);
+    
+    websocket.once('close', () => clearInterval(cacheEntry.resetTimer));
   }
-
-  websocket.on('close', () => {
-    clearInterval(cacheEntry.resetTimer);
-    messageRateLimitCache.delete(websocket);
-  });
 
   return (executeAction) => {
     if (cacheEntry.messageCount < messagesAllowed) {
@@ -44,7 +49,6 @@ const enforceRateLimit = (websocket, messagesAllowed, periodMs) => {
 
 websocketServer.on('connection', (websocket) => {
   console.log('Client connected');
-
   const applyRateLimit = enforceRateLimit(websocket, 5, 10000);
 
   websocket.on('message', (messageData) => {
@@ -54,7 +58,7 @@ websocketServer.on('connection', (websocket) => {
     });
   });
 
-  websocket.on('close', () => {
+  websocket.on('close', => {
     console.log('Client disconnected');
   });
 });
